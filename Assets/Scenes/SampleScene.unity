@@ -592,28 +592,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   moveSpeed: 8
   sprintMultiplier: 1.5
-  acceleration: 50
-  deceleration: 50
-  airControl: 0.5
   jumpForce: 15
-  fallMultiplier: 2.5
-  lowJumpMultiplier: 2
   maxJumps: 2
-  coyoteTime: 0.2
-  jumpBufferTime: 0.2
-  groundCheck: {fileID: 1841891719}
-  groundLayerMask:
+  groundCheckRadius: 0.05
+  groundLayer:
     serializedVersion: 2
-    m_Bits: 1
-  groundCheckRadius: 0.2
-  wallCheck: {fileID: 0}
-  wallCheckDistance: 0.5
-  wallLayerMask:
-    serializedVersion: 2
-    m_Bits: 1
-  crouchSpeedMultiplier: 0.5
-  crouchColliderHeight: 1
-  crouchColliderOffset: {x: 0, y: 0}
+    m_Bits: 8192
+  groundCheckPoint: {fileID: 1841891719}
+  isGrounded: 0
 --- !u!114 &1231798979
 MonoBehaviour:
   m_ObjectHideFlags: 0
