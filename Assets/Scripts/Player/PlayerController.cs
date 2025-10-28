@@ -1,3 +1,5 @@
+using System;
+using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -5,179 +7,210 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(Collider2D))]
 public class PlayerController : MonoBehaviour
 {
-    public enum PlayerState
-    {
-        Idle,
-        Running,
-        Sprinting,
-        Jumping,
-        Falling,
-    }
+    public enum PlayerState { Idle, Running, Sprinting, Jumping, Falling }
+
+    public static readonly int anim_param_move = Animator.StringToHash("xVelocity");
+    public static readonly int anim_param_jump = Animator.StringToHash("yVelocity");
+    public static readonly int anim_param_grounded = Animator.StringToHash("isGrounded");
+
 
     [Header("Movement")]
-    [SerializeField] private float moveSpeed = 6f;
-    [SerializeField] private float sprintMultiplier = 1.6f;
-    [SerializeField] private float accelGround = 45f;
-    [SerializeField] private float accelAir = 25f;
-
+    [SerializeField, Tooltip("Movement speed of the player")] private float moveSpeed = 5f;
+    [SerializeField, Tooltip("Sprint speed multiplier")] private float sprintMultiplier = 1.5f;
+    [Space]
     [Header("Jumping")]
-    [SerializeField] private float jumpForce = 12f;
-    [SerializeField, Tooltip("Total jumps allowed per airtime (2 = double jump)")] private int maxJumps = 2;
-    [SerializeField, Tooltip("Grace time after leaving ground")] private float coyoteTime = 0.12f;
-    [SerializeField, Tooltip("Accept jump pressed slightly before landing")] private float jumpBuffer = 0.12f;
-    [SerializeField, Tooltip("Extra gravity when falling")] private float fallMultiplier = 2.2f;
-    [SerializeField, Tooltip("Extra gravity when rising and jump is released")] private float lowJumpMultiplier = 2.0f;
+    [SerializeField, Tooltip("Force applied when jumping")] private float jumpForce = 7f;
+    [SerializeField, Tooltip("Maximum number of jumps available")] private int maxJumps = 2;
+    [SerializeField, Tooltip("Post-leave ground window")] private float coyoteTime = 0.12f;
+    [SerializeField, Tooltip("Pre-ground press window")] private float jumpBuffer = 0.12f;
+    [SerializeField, Tooltip("Multiplier for falling speed")] private float fallMultiplier = 2.2f;
+    [SerializeField, Tooltip("Multiplier for low jumps")] private float lowJumpMultiplier = 2.0f;
 
-    [Header("Ground Check")]
-    [SerializeField] private Transform groundCheckPoint;
-    [SerializeField] private float groundCheckRadius = 0.15f;
-    [SerializeField] private LayerMask groundLayer;
+    [Space]
+    [Header("Collision Detection")]
+    [SerializeField, Tooltip("Layer mask for ground detection")] private LayerMask groundLayer;
+    [SerializeField, Tooltip("Distance to check for ground")] private float groundCheckDistance = 0.1f;
+    [SerializeField, Tooltip("Point to check for ground")] private Transform groundCheckPoint;
 
-    [Header("Debug State")] 
-    [SerializeField] private PlayerState currentState = PlayerState.Idle;
-
-    // Animator parameters (optional)
-    private static readonly int AnimSpeed = Animator.StringToHash("Speed");
-    private static readonly int AnimGrounded = Animator.StringToHash("Grounded");
-    private static readonly int AnimState = Animator.StringToHash("State");
-
-    // Components
     private Rigidbody2D rb;
     private Animator animator;
-    private SpriteRenderer sprite;
-
-    // Input System
-    private InputSystem_Actions input;
-
-    // Runtime/input
-    private float moveAxis;        // -1..1 horizontal
-    private bool sprintHeld;       // sprint modifier
-    private bool jumpHeld;         // for variable jump height
-    private float lastGrounded;    // coyote timer
-    private float lastJumpPressed; // buffer timer
-    private int jumpsUsed;         // jumps since last grounded
+    private PlayerState currentState { get; set; }
+    private InputSystem_Actions inputActions;
+    private Vector2 movementInput;
+    private int jumpCount;
+    private int remainingJumps;
     private bool isGrounded;
+    private float coyoteTimer;
+    private float bufferTimer;
+    private bool jumpHeld;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponentInChildren<Animator>();
-        sprite = GetComponentInChildren<SpriteRenderer>();
-
-        input = new InputSystem_Actions();
+        inputActions = new InputSystem_Actions();
     }
 
-    private void OnEnable()
+    void Start()
     {
-        input.Enable();
+        jumpCount = maxJumps;
 
-        // Jump events
-        input.Player.Jump.started += OnJumpStarted;
-        input.Player.Jump.canceled += OnJumpCanceled;
+        inputActions.Player.Move.performed += ctx => currentState = PlayerState.Running;
+        inputActions.Player.Move.canceled += ctx => currentState = PlayerState.Idle;
+        inputActions.Player.Sprint.performed += ctx => currentState = PlayerState.Sprinting;
+        inputActions.Player.Sprint.canceled += ctx => currentState = PlayerState.Running;
+        inputActions.Player.Jump.performed += ctx => PlayerJumpStarted(ctx);
+        inputActions.Player.Jump.canceled += ctx => PlayerJumpCanceled(ctx);
 
-        // Sprint held
-        input.Player.Sprint.started += ctx => sprintHeld = true;
-        input.Player.Sprint.canceled += ctx => sprintHeld = false;
     }
 
-    private void OnDisable()
+    void Update()
     {
-        input.Player.Jump.started -= OnJumpStarted;
-        input.Player.Jump.canceled -= OnJumpCanceled;
-        input.Disable();
-    }
-
-    private void Update()
-    {
-        // Read move axis
-        Vector2 move = input.Player.Move.ReadValue<Vector2>();
-        moveAxis = Mathf.Clamp(move.x, -1f, 1f);
+        HandlePlayerState();
+        HandleAnimEvents();
 
         // Ground check
-        if (groundCheckPoint != null)
+        bool wasGrounded = isGrounded;
+        isGrounded = IsGrounded();
+
+        // Reset jumps on landing
+        if (isGrounded && !wasGrounded)
         {
-            bool groundedNow = Physics2D.OverlapCircle(groundCheckPoint.position, groundCheckRadius, groundLayer);
-            if (groundedNow && !isGrounded)
-            {
-                // landed — reset jumps
-                jumpsUsed = 0;
-            }
-            isGrounded = groundedNow;
+            // Landed: reset jumps and resolve immediate movement state
+            remainingJumps = maxJumps;
+
+            currentState = inputActions.Player.Move.IsPressed() ? PlayerState.Running : PlayerState.Idle;
         }
 
         // Timers
-        if (isGrounded) lastGrounded = coyoteTime; else lastGrounded -= Time.deltaTime;
-        lastJumpPressed -= Time.deltaTime;
-
-        // State resolution
-        if (!isGrounded)
-            currentState = rb.linearVelocity.y >= 0.01f ? PlayerState.Jumping : PlayerState.Falling;
-        else
-            currentState = Mathf.Abs(moveAxis) > 0.01f ? (sprintHeld ? PlayerState.Sprinting : PlayerState.Running) : PlayerState.Idle;
-
-        // Facing
-        if (sprite != null)
-        {
-            if (moveAxis > 0.01f) sprite.flipX = false;
-            else if (moveAxis < -0.01f) sprite.flipX = true;
-        }
-
-        // Animator
-        if (animator != null)
-        {
-            animator.SetFloat(AnimSpeed, Mathf.Abs(rb.linearVelocity.x));
-            animator.SetBool(AnimGrounded, isGrounded);
-            animator.SetInteger(AnimState, (int)currentState);
-        }
+        coyoteTimer = isGrounded ? coyoteTime : Mathf.Max(0f, coyoteTimer - Time.deltaTime);
+        bufferTimer = Mathf.Max(0f, bufferTimer - Time.deltaTime);
     }
 
     private void FixedUpdate()
     {
-        // Horizontal movement with smoothing
-        float targetSpeed = moveAxis * moveSpeed * (sprintHeld ? sprintMultiplier : 1f);
-        float accel = isGrounded ? accelGround : accelAir;
-        float newX = Mathf.MoveTowards(rb.linearVelocity.x, targetSpeed, accel * Time.fixedDeltaTime);
-        rb.linearVelocity = new Vector2(newX, rb.linearVelocity.y);
-
-        // Jump consumption (buffer + coyote + extra jumps)
-        if (lastJumpPressed > 0f && (lastGrounded > 0f || jumpsUsed < maxJumps))
+        // Consume jump if buffered and allowed
+        if (bufferTimer > 0f && CanJumpNow())
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-            if (isGrounded) jumpsUsed = 1; else jumpsUsed++;
-            lastJumpPressed = 0f;
-            lastGrounded = 0f;
+            DoJump();
+            bufferTimer = 0f;
+            coyoteTimer = 0f;
         }
 
-        // Better jump feel
-        if (rb.linearVelocity.y < -0.01f)
+        // Better fall feel
+        var v = rb.linearVelocity;
+        if (v.y < -0.01f)
         {
-            // Falling
-            rb.linearVelocity += Vector2.up * Physics2D.gravity.y * (fallMultiplier - 1f) * Time.fixedDeltaTime;
+            v += Vector2.up * Physics2D.gravity.y * rb.gravityScale * (fallMultiplier - 1f) * Time.fixedDeltaTime;
         }
-        else if (rb.linearVelocity.y > 0.01f && !jumpHeld)
+        else if (v.y > 0.01f && !jumpHeld)
         {
-            // Rising but jump released — shorter jump
-            rb.linearVelocity += Vector2.up * Physics2D.gravity.y * (lowJumpMultiplier - 1f) * Time.fixedDeltaTime;
+            v += Vector2.up * Physics2D.gravity.y * rb.gravityScale * (lowJumpMultiplier - 1f) * Time.fixedDeltaTime;
+        }
+        rb.linearVelocity = v;
+
+        // Optional: head-bonk ceiling check (simple)
+        // If using Tilemap or a top check, clamp v.y when touching ceiling.
+    }
+
+    private void OnEnable() => inputActions.Enable();
+    private void OnDisable() => inputActions.Disable();
+
+    private void HandlePlayerState()
+    {
+        switch (currentState)
+        {
+            case PlayerState.Idle:
+                PlayerIdle();
+                break;
+            case PlayerState.Running:
+                PlayerMove();
+                break;
+            case PlayerState.Sprinting:
+                PlayerSprint();
+                break;
+            case PlayerState.Jumping:
+                // Jump logic is handled in PlayerJumpStarted callback and FixedUpdate
+                break;
+            case PlayerState.Falling:
+                // Handle falling state logic
+                break;
         }
     }
 
-    private void OnJumpStarted(InputAction.CallbackContext ctx)
+    private void PlayerIdle() => SetVelocity(new Vector2(0f, rb.linearVelocity.y));
+
+    private void PlayerMove()
+    {
+        movementInput = GetVelocity();
+        Vector2 velocity = new Vector2(movementInput.x * moveSpeed, rb.linearVelocity.y);
+        SetVelocity(velocity);
+    }
+
+    private void PlayerSprint()
+    {
+        if (inputActions.Player.Sprint.IsPressed())
+        {
+            movementInput = GetVelocity();
+            Vector2 velocity = new Vector2(movementInput.x * moveSpeed * sprintMultiplier, rb.linearVelocity.y);
+            SetVelocity(velocity);
+        }
+    }
+
+    private void PlayerJumpStarted(InputAction.CallbackContext _)
     {
         jumpHeld = true;
-        lastJumpPressed = jumpBuffer;
+        bufferTimer = jumpBuffer;
+        currentState = PlayerState.Jumping;
     }
-
-    private void OnJumpCanceled(InputAction.CallbackContext ctx)
+    private void PlayerJumpCanceled(InputAction.CallbackContext _)
     {
         jumpHeld = false;
+        if (IsGrounded() && rb.linearVelocity.x > 0.1f) currentState = PlayerState.Running;
+        if (rb.linearVelocity.y < 0) currentState = PlayerState.Falling;
     }
 
-    private void OnDrawGizmosSelected()
+    // Helpers
+    // Allow if grounded (via coyote) or have air jumps left
+    private bool CanJumpNow() => coyoteTimer > 0f || remainingJumps > 0;
+
+    private void DoJump()
     {
-        if (groundCheckPoint != null)
-        {
-            Gizmos.color = isGrounded ? Color.green : Color.red;
-            Gizmos.DrawWireSphere(groundCheckPoint.position, groundCheckRadius);
-        }
+        // Set clean upward takeoff
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+
+        // If grounded via coyote, we’re spending the first jump now.
+        // With remainingJumps model, just decrement if not grounded.
+        if (!isGrounded) remainingJumps = Mathf.Max(remainingJumps - 1, 0);
+        else remainingJumps = Mathf.Max(maxJumps - 1, 0);
+    }
+
+    private Vector2 GetVelocity() => inputActions.Player.Move.ReadValue<Vector2>();
+
+    private void SetVelocity(Vector2 velocity)
+    {
+        rb.linearVelocity = velocity;
+        FlipPlayerSprite();
+    }
+
+    private bool IsGrounded() => Physics2D.OverlapCircle(groundCheckPoint.position, groundCheckDistance, groundLayer);
+
+    private void HandleAnimEvents()
+    {
+        animator.SetFloat(anim_param_move, rb.linearVelocity.x);
+        animator.SetFloat(anim_param_jump, rb.linearVelocity.y);
+        animator.SetBool(anim_param_grounded, isGrounded);
+    }
+
+    private void FlipPlayerSprite()
+    {
+        if (rb.linearVelocity.x > 0.1f) transform.localScale = new Vector3(1, 1, 1);
+        else if (rb.linearVelocity.x < -0.1f) transform.localScale = new Vector3(-1, 1, 1);
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(groundCheckPoint.position, groundCheckDistance);
     }
 }
