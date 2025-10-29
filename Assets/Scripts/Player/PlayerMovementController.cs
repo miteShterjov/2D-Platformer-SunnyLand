@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(Collider2D))]
-public class PlayerController : MonoBehaviour
+public class PlayerMovementController : MonoBehaviour
 {
     public enum PlayerState { Idle, Running, Sprinting, Jumping, Falling }
 
@@ -25,6 +25,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField, Tooltip("Pre-ground press window")] private float jumpBuffer = 0.12f;
     [SerializeField, Tooltip("Multiplier for falling speed")] private float fallMultiplier = 2.2f;
     [SerializeField, Tooltip("Multiplier for low jumps")] private float lowJumpMultiplier = 2.0f;
+    [SerializeField, Tooltip("Stamina cost for jumping")] private float staminaJumpCost = 4.0f;
 
     [Space]
     [Header("Collision Detection")]
@@ -149,8 +150,11 @@ public class PlayerController : MonoBehaviour
 
     private void PlayerSprint()
     {
+        if (PlayerStats.instance.CurrentStamina <= 0) return;
+
         if (inputActions.Player.Sprint.IsPressed())
         {
+            PlayerStats.instance.SpendStamina();
             movementInput = GetVelocity();
             Vector2 velocity = new Vector2(movementInput.x * moveSpeed * sprintMultiplier, rb.linearVelocity.y);
             SetVelocity(velocity);
@@ -176,6 +180,10 @@ public class PlayerController : MonoBehaviour
 
     private void DoJump()
     {
+        if (PlayerStats.instance.CurrentStamina <= 0) return;
+
+        PlayerStats.instance.SpendStamina(staminaJumpCost);
+
         // Set clean upward takeoff
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
 
