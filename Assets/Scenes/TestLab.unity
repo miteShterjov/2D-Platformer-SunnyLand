@@ -444,12 +444,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 619394800}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1204781470}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &717624023
 GameObject:
@@ -6231,6 +6231,68 @@ Tilemap:
     e31: 0
     e32: 0
     e33: 1
+--- !u!1 &869147752
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 869147753}
+  m_Layer: 0
+  m_Name: secondWallCheck
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &869147753
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 869147752}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1231798977}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &889833125
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 889833126}
+  m_Layer: 0
+  m_Name: primaryWallCheck
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &889833126
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 889833125}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1231798977}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1085907970
 GameObject:
   m_ObjectHideFlags: 0
@@ -27220,6 +27282,7 @@ Transform:
   - {fileID: 519420032}
   - {fileID: 2055758500}
   - {fileID: 53356732}
+  - {fileID: 619394802}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1231798974
@@ -27234,8 +27297,10 @@ GameObject:
   - component: {fileID: 1231798976}
   - component: {fileID: 1231798975}
   - component: {fileID: 1231798979}
-  - component: {fileID: 1231798978}
   - component: {fileID: 1231798980}
+  - component: {fileID: 1231798978}
+  - component: {fileID: 1231798981}
+  - component: {fileID: 1231798982}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -27322,6 +27387,8 @@ Transform:
   m_Children:
   - {fileID: 1424745936}
   - {fileID: 1841891719}
+  - {fileID: 889833126}
+  - {fileID: 869147753}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1231798978
@@ -27335,21 +27402,26 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dcb3fae742586458b84e428e8a7fb283, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementController
   moveSpeed: 5
-  sprintMultiplier: 2
-  jumpForce: 5
+  sprintMultiplier: 1.5
+  jumpForce: 7
   maxJumps: 2
   coyoteTime: 0.12
   jumpBuffer: 0.12
   fallMultiplier: 2.2
   lowJumpMultiplier: 2
   staminaJumpCost: 4
+  wallFallSpeed: 0.5
   groundLayer:
     serializedVersion: 2
     m_Bits: 8192
-  groundCheckDistance: 0.02
+  groundCheckDistance: 0.1
   groundCheckPoint: {fileID: 1841891719}
+  wallPrimaryCheck: {fileID: 889833126}
+  wallSecondaryCheck: {fileID: 869147753}
+  wallCheckDistance: 0.5
+  wallJumpLockDuration: 0.15
 --- !u!114 &1231798979
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27392,6 +27464,43 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7cdfd0bfbddba19c19a0177744421fd5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStats
+  maxHealth: 100
+  currentHealth: 0
+  maxStamina: 100
+  currentStamina: 0
+  staminaRegenRate: 5
+  staminaSpendRate: 7
+--- !u!114 &1231798981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1231798974}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99900bbe864d7492a8417c4406132a4a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealthController
+--- !u!114 &1231798982
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1231798974}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 96f4069692f24df7084f774f5956f09c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AVFXs
+  enableSpriteFlash: 1
+  flashColor: {r: 1, g: 1, b: 1, a: 1}
+  flashDuration: 0.2
+  alphaIndex: 0.6
+  knockbackImpulse: 8
+  knockbackUpwardImpulse: 2
+  flashOnKnockback: 1
 --- !u!1 &1264371131
 GameObject:
   m_ObjectHideFlags: 0
@@ -27715,6 +27824,5 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 1204781470}
-  - {fileID: 619394802}
   - {fileID: 1231798977}
   - {fileID: 1264371133}

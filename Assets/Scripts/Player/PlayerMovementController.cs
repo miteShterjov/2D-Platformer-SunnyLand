@@ -1,5 +1,6 @@
 using System;
 using NUnit.Framework;
+using UnityEditor.EditorTools;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -7,11 +8,13 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(Collider2D))]
 public class PlayerMovementController : MonoBehaviour
 {
-    public enum PlayerState { Idle, Running, Sprinting, Jumping, Falling }
+    #region Class Params
+    public enum PlayerState { Idle, Running, Sprinting, Jumping, Falling, WallSlide, WallSlideJump }
 
     public static readonly int anim_param_move = Animator.StringToHash("xVelocity");
     public static readonly int anim_param_jump = Animator.StringToHash("yVelocity");
     public static readonly int anim_param_grounded = Animator.StringToHash("isGrounded");
+    public static readonly int anim_param_wallSliding = Animator.StringToHash("isWallSliding");
 
 
     [Header("Movement")]
@@ -26,66 +29,91 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField, Tooltip("Multiplier for falling speed")] private float fallMultiplier = 2.2f;
     [SerializeField, Tooltip("Multiplier for low jumps")] private float lowJumpMultiplier = 2.0f;
     [SerializeField, Tooltip("Stamina cost for jumping")] private float staminaJumpCost = 4.0f;
+    [SerializeField, Tooltip("Speed at which the player falls while wall sliding")] private float wallFallSpeed = 0.5f;
 
     [Space]
     [Header("Collision Detection")]
     [SerializeField, Tooltip("Layer mask for ground detection")] private LayerMask groundLayer;
     [SerializeField, Tooltip("Distance to check for ground")] private float groundCheckDistance = 0.1f;
     [SerializeField, Tooltip("Point to check for ground")] private Transform groundCheckPoint;
+    [SerializeField, Tooltip("Point to check for wall")] private Transform wallPrimaryCheck;
+    [SerializeField, Tooltip("Point to check for wall")] private Transform wallSecondaryCheck;
+    [SerializeField, Tooltip("Distance to check for wall")] private float wallCheckDistance = 0.5f;
+    [SerializeField, Tooltip("Lockout time after a wall jump where wall detection won't re-enter WallSlide")] private float wallJumpLockDuration = 0.15f;
 
     private Rigidbody2D rb;
     private Animator animator;
     private PlayerState currentState { get; set; }
     private InputSystem_Actions inputActions;
     private Vector2 movementInput;
-    private int jumpCount;
     private int remainingJumps;
     private bool isGrounded;
     private float coyoteTimer;
     private float bufferTimer;
     private bool jumpHeld;
+    
+    private float wallJumpLockTimer;
+    private float baseGravityScale;
+    private float lastWallNormalX; // from raycast
+    #endregion
 
+    #region Unity Methods
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponentInChildren<Animator>();
         inputActions = new InputSystem_Actions();
+        baseGravityScale = rb.gravityScale;
     }
 
     void Start()
     {
-        jumpCount = maxJumps;
-
         inputActions.Player.Move.performed += ctx => currentState = PlayerState.Running;
         inputActions.Player.Move.canceled += ctx => currentState = PlayerState.Idle;
         inputActions.Player.Sprint.performed += ctx => currentState = PlayerState.Sprinting;
         inputActions.Player.Sprint.canceled += ctx => currentState = PlayerState.Running;
         inputActions.Player.Jump.performed += ctx => PlayerJumpStarted(ctx);
         inputActions.Player.Jump.canceled += ctx => PlayerJumpCanceled(ctx);
+        
+        inputActions.Player.Testing.performed += ctx => GetComponent<PlayerHealthController>().TakeDamage(1);
+
 
     }
 
     void Update()
     {
-        HandlePlayerState();
-        HandleAnimEvents();
-
-        // Ground check
+        // Environment checks first
         bool wasGrounded = isGrounded;
         isGrounded = IsGrounded();
 
-        // Reset jumps on landing
+        // Reset jumps and resolve landing state
         if (isGrounded && !wasGrounded)
         {
-            // Landed: reset jumps and resolve immediate movement state
             remainingJumps = maxJumps;
-
             currentState = inputActions.Player.Move.IsPressed() ? PlayerState.Running : PlayerState.Idle;
+        }
+
+        // Wall interactions (ignore while wall jump lock is active)
+        wallJumpLockTimer = Mathf.Max(0f, wallJumpLockTimer - Time.deltaTime);
+        bool touchingWall = IsTouchingWall();
+
+        if (touchingWall && !isGrounded && rb.linearVelocity.y <= 0.01f && wallJumpLockTimer <= 0f)
+        {
+            currentState = PlayerState.WallSlide;
+        }
+
+        if (touchingWall && !isGrounded && inputActions.Player.Jump.WasPressedThisFrame() && wallJumpLockTimer <= 0f)
+        {
+            currentState = PlayerState.WallSlideJump;
         }
 
         // Timers
         coyoteTimer = isGrounded ? coyoteTime : Mathf.Max(0f, coyoteTimer - Time.deltaTime);
         bufferTimer = Mathf.Max(0f, bufferTimer - Time.deltaTime);
+
+        // Now run state behavior and animations
+        HandlePlayerState();
+        HandleAnimEvents();
     }
 
     private void FixedUpdate()
@@ -98,25 +126,22 @@ public class PlayerMovementController : MonoBehaviour
             coyoteTimer = 0f;
         }
 
-        // Better fall feel
-        var v = rb.linearVelocity;
-        if (v.y < -0.01f)
+        // Better fall feel (skip while wall sliding; that state manages fall)
+        Vector2 tempVector = rb.linearVelocity;
+        if (currentState != PlayerState.WallSlide)
         {
-            v += Vector2.up * Physics2D.gravity.y * rb.gravityScale * (fallMultiplier - 1f) * Time.fixedDeltaTime;
+            if (tempVector.y < -0.01f) tempVector += Vector2.up * Physics2D.gravity.y * rb.gravityScale * (fallMultiplier - 1f) * Time.fixedDeltaTime;
+            else if (tempVector.y > 0.01f && !jumpHeld) tempVector += Vector2.up * Physics2D.gravity.y * rb.gravityScale * (lowJumpMultiplier - 1f) * Time.fixedDeltaTime;
         }
-        else if (v.y > 0.01f && !jumpHeld)
-        {
-            v += Vector2.up * Physics2D.gravity.y * rb.gravityScale * (lowJumpMultiplier - 1f) * Time.fixedDeltaTime;
-        }
-        rb.linearVelocity = v;
 
-        // Optional: head-bonk ceiling check (simple)
-        // If using Tilemap or a top check, clamp v.y when touching ceiling.
+        rb.linearVelocity = tempVector;
     }
 
     private void OnEnable() => inputActions.Enable();
     private void OnDisable() => inputActions.Disable();
+    #endregion
 
+    #region Player State Handlers
     private void HandlePlayerState()
     {
         switch (currentState)
@@ -135,6 +160,12 @@ public class PlayerMovementController : MonoBehaviour
                 break;
             case PlayerState.Falling:
                 // Handle falling state logic
+                break;
+            case PlayerState.WallSlide:
+                PlayerWallSlide();
+                break;
+            case PlayerState.WallSlideJump:
+                PlayerWallSlideJump();
                 break;
         }
     }
@@ -193,6 +224,34 @@ public class PlayerMovementController : MonoBehaviour
         else remainingJumps = Mathf.Max(maxJumps - 1, 0);
     }
 
+    private void PlayerWallSlide()
+    {
+        // Keep normal gravity and cap downward speed to -wallFallSpeed
+        rb.gravityScale = baseGravityScale;
+        float cappedY = Mathf.Max(rb.linearVelocity.y, -Mathf.Abs(wallFallSpeed));
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, cappedY);
+    }
+
+    private void PlayerWallSlideJump()
+    {
+        jumpHeld = true;
+
+        // Prefer wall normal when available; fallback to facing
+        float awayX = (Mathf.Abs(lastWallNormalX) > 0.001f) ? lastWallNormalX : -Mathf.Sign(transform.localScale.x);
+        Vector2 wallJumpDirection = new Vector2(awayX, 1f).normalized;
+
+        // Apply jump impulse
+        rb.gravityScale = baseGravityScale;
+        rb.linearVelocity = wallJumpDirection * jumpForce;
+
+        // Prevent immediate re-entering wall slide
+        wallJumpLockTimer = wallJumpLockDuration;
+        currentState = PlayerState.Jumping;
+    }
+
+    #endregion
+
+    #region Utility Methods
     private Vector2 GetVelocity() => inputActions.Player.Move.ReadValue<Vector2>();
 
     private void SetVelocity(Vector2 velocity)
@@ -203,11 +262,30 @@ public class PlayerMovementController : MonoBehaviour
 
     private bool IsGrounded() => Physics2D.OverlapCircle(groundCheckPoint.position, groundCheckDistance, groundLayer);
 
+    private bool IsTouchingWall()
+    {
+        Vector2 dir = Vector2.right * Mathf.Sign(transform.localScale.x);
+        RaycastHit2D hit1 = Physics2D.Raycast(wallPrimaryCheck.position, dir, wallCheckDistance, groundLayer);
+        RaycastHit2D hit2 = Physics2D.Raycast(wallSecondaryCheck.position, dir, wallCheckDistance, groundLayer);
+        if (hit1.collider != null)
+        {
+            lastWallNormalX = hit1.normal.x;
+            return true;
+        }
+        if (hit2.collider != null)
+        {
+            lastWallNormalX = hit2.normal.x;
+            return true;
+        }
+        return false;
+    }
+
     private void HandleAnimEvents()
     {
         animator.SetFloat(anim_param_move, rb.linearVelocity.x);
         animator.SetFloat(anim_param_jump, rb.linearVelocity.y);
         animator.SetBool(anim_param_grounded, isGrounded);
+        animator.SetBool(anim_param_wallSliding, currentState == PlayerState.WallSlide);
     }
 
     private void FlipPlayerSprite()
@@ -220,5 +298,10 @@ public class PlayerMovementController : MonoBehaviour
     {
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(groundCheckPoint.position, groundCheckDistance);
+
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(wallPrimaryCheck.position, wallPrimaryCheck.position + Vector3.right * wallCheckDistance);
+        Gizmos.DrawLine(wallSecondaryCheck.position, wallSecondaryCheck.position + Vector3.right * wallCheckDistance);
     }
+    #endregion
 }
