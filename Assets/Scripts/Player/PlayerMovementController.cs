@@ -46,6 +46,7 @@ public class PlayerMovementController : MonoBehaviour
     private PlayerState currentState { get; set; }
     private InputSystem_Actions inputActions;
     private Vector2 movementInput;
+    private AVFXs vfx;
     private int remainingJumps;
     private bool isGrounded;
     private float coyoteTimer;
@@ -63,6 +64,7 @@ public class PlayerMovementController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponentInChildren<Animator>();
         inputActions = new InputSystem_Actions();
+        vfx = GetComponentInChildren<AVFXs>();
         baseGravityScale = rb.gravityScale;
     }
 
@@ -256,6 +258,13 @@ public class PlayerMovementController : MonoBehaviour
 
     private void SetVelocity(Vector2 velocity)
     {
+        // If knockback is active, don't override X velocity; let physics carry the impulse
+        if (vfx != null && vfx.IsKnocked)
+        {
+            // Optionally still allow Y changes (e.g., gravity adjustments)
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, velocity.y);
+            return;
+        }
         rb.linearVelocity = velocity;
         FlipPlayerSprite();
     }

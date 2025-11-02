@@ -36,7 +36,7 @@ public class PlayerHealthController : MonoBehaviour
     {
         animator.SetTrigger(anim_param_hurt);
         aVeffects?.SpriteFlash();
-        aVeffects?.knockback();
+        aVeffects?.Knockback();
         // Additional hurt logic (e.g., invincibility frames, sound effects) can be added here.                             
     }
 

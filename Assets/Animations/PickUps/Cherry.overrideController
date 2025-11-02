@@ -1,0 +1,15 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Cherry
+  m_Controller: {fileID: 9100000, guid: 0cfbec27a2332ede8a31827f33952476, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: 343b715ba76c74c0a810743a50fff0ec, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 95a99970ef9815f95833dfc19f970b15, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 82f0497544184e1d18a1be9d4c6229e6, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 82f0497544184e1d18a1be9d4c6229e6, type: 2}
