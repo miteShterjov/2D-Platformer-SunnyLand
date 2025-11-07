@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 4121283271449243991}
   - component: {fileID: 6576483975491183276}
   - component: {fileID: 8436116665037366706}
+  - component: {fileID: 2305219541732800993}
   m_Layer: 0
   m_Name: Gem-PickUp
   m_TagString: PickUp
@@ -176,3 +177,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 386aa88a5fe928ebea5cc0f5c25a0961, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ObjectDestroy
+--- !u!114 &2305219541732800993
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1989807599548609736}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41f90a1d19972a8ab85ab27757c1a677, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TopDown.Misc.RandomIdleAnim

@@ -46,7 +46,7 @@ public class PlayerMovementController : MonoBehaviour
     private PlayerState currentState { get; set; }
     private InputSystem_Actions inputActions;
     private Vector2 movementInput;
-    private AVFXs vfx;
+    private Character_AVFXs vfx;
     private int remainingJumps;
     private bool isGrounded;
     private float coyoteTimer;
@@ -64,7 +64,7 @@ public class PlayerMovementController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponentInChildren<Animator>();
         inputActions = new InputSystem_Actions();
-        vfx = GetComponentInChildren<AVFXs>();
+        vfx = GetComponentInChildren<Character_AVFXs>();
         baseGravityScale = rb.gravityScale;
     }
 
@@ -77,7 +77,7 @@ public class PlayerMovementController : MonoBehaviour
         inputActions.Player.Jump.performed += ctx => PlayerJumpStarted(ctx);
         inputActions.Player.Jump.canceled += ctx => PlayerJumpCanceled(ctx);
         
-        inputActions.Player.Testing.performed += ctx => GetComponent<PlayerHealthController>().TakeDamage(1);
+        inputActions.Player.Testing.performed += ctx => GetComponent<PlayerHealthController>().PlayerDies();
 
 
     }
