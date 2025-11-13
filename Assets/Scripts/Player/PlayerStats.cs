@@ -4,8 +4,10 @@ public class PlayerStats : MonoBehaviour
 {
     public static PlayerStats instance;
 
-    public int CurrentHealth => currentHealth;
-    public float CurrentStamina => currentStamina;
+    public int MaxHealth => maxHealth;
+    public int CurrentHealth { get => currentHealth; set => currentHealth = value; }
+    public float MaxStamina => maxStamina;
+    public float CurrentStamina { get => currentStamina; set => currentStamina = value; }
 
     [Header("Basic Stats")]
     [SerializeField, Tooltip("Maximum health of the player")] private int maxHealth = 100;
@@ -14,8 +16,7 @@ public class PlayerStats : MonoBehaviour
     [SerializeField, Tooltip("Current stamina of the player")] private float currentStamina;
     [SerializeField, Tooltip("Stamina regeneration rate per second")] private float staminaRegenRate = 5f;
     [SerializeField, Tooltip("Stamina consumption rate per second")] private float staminaSpendRate  = 7f;
-
-
+    
     void Awake()
     {
         if (instance == null)

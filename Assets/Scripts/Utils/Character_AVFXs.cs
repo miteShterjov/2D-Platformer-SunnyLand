@@ -53,13 +53,18 @@ public class Character_AVFXs : MonoBehaviour
 
     // EFFECT: KNOCKBACK
     // Simple default knockback: away from facing direction, with default forces
-    public void Knockback()
+    public void Knockback(float sourceDamageXPosition)
     {
+        float direction = 1;
+
         if (isKnocked || !canBeKnocked) return;
+
+        if (transform.position.x < sourceDamageXPosition) direction = -1; // Knockback to the left
+        else direction = 1; // Knockback to the right
 
         StartCoroutine(KnockbackCoroutine());
 
-        rb.linearVelocity = new Vector2(knockbackForce.x * (transform.localScale.x > 0 ? -1 : 1), knockbackForce.y);
+        rb.linearVelocity = new Vector2(knockbackForce.x * direction, knockbackForce.y);
     }
 
     private IEnumerator KnockbackCoroutine()

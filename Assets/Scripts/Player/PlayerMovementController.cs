@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using NUnit.Framework;
 using UnityEditor.EditorTools;
 using UnityEngine;
@@ -254,6 +255,24 @@ public class PlayerMovementController : MonoBehaviour
     #endregion
 
     #region Utility Methods
+    
+    public void Push(Vector2 direction, float duration = 0)
+    {
+        StartCoroutine(PushCoroutine(direction, duration));
+    } 
+
+    private IEnumerator PushCoroutine(Vector2 direction, float duration)
+    {
+        inputActions.Disable();
+
+        // rb.linearVelocity = Vector2.zero;
+        rb.AddForce(direction, ForceMode2D.Impulse);
+
+        yield return new WaitForSeconds(duration);
+
+        inputActions.Enable();
+    }
+
     private Vector2 GetVelocity() => inputActions.Player.Move.ReadValue<Vector2>();
 
     private void SetVelocity(Vector2 velocity)

@@ -6,11 +6,17 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
 
+    [Header("Gem Collection Settings")]
+    [SerializeField] private float gemsCollected;
+    [Space]
+    [Header("Screen Fading Settings")]
     [SerializeField] UnityEngine.UI.Image fadderImage;
     [SerializeField] private float fadeSpeed = 0.5f;
     [SerializeField] private float screenDelay = 0.5f;
+    [Space]
+    [Header("Respawn Settings")]
+    [SerializeField] private Transform playerStartPosition;
     private GameObject player;
-    private Transform playerStartPosition;
     private Checkpoint currentCheckpoint;
 
     void Awake()
@@ -26,9 +32,12 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         player = GameObject.FindGameObjectWithTag("Player");
-        if (player == null) Debug.LogError("Player not found in the scene. Please ensure the player has the 'Player' tag assigned.");
-        playerStartPosition = player.transform;
-        if (playerStartPosition == null) Debug.LogError("Player start position is not set properly.");
+    }
+
+    public void AddGems()
+    {
+        gemsCollected++;
+        print("Gems Collected: " + gemsCollected);
     }
 
     public void SetActiveCheckpoint(Checkpoint checkpoint)
@@ -40,6 +49,7 @@ public class GameManager : MonoBehaviour
     public void StartPlayerRespawnCo()
     {
         StartCoroutine(RespawnPlayerCoroutine());
+        print("coroutine started from game manager.");
     }
 
     private IEnumerator RespawnPlayerCoroutine()
@@ -52,6 +62,7 @@ public class GameManager : MonoBehaviour
 
     private void RespawnPlayerAtCheckpoint()
     {
+        print("Respawning player in correct position...");
         if (currentCheckpoint != null) player.transform.position = currentCheckpoint.transform.position;
         else player.transform.position = playerStartPosition.position;
     }
@@ -64,7 +75,6 @@ public class GameManager : MonoBehaviour
             fadderImage.color = new Color(fadderImage.color.r, fadderImage.color.g, fadderImage.color.b, alpha);
             yield return new WaitForSeconds(screenDelay);
         }
-
     }
 
 }

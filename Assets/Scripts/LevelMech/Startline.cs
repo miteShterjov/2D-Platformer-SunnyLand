@@ -7,21 +7,25 @@ public class Startline : MonoBehaviour
     [SerializeField] private bool isFliped = false;
 
     private Animator animator;
-    private SpriteRenderer spriteRenderer;
-
+    
     void Awake()
     {
         animator = GetComponentInChildren<Animator>();
-        spriteRenderer = GetComponentInChildren<SpriteRenderer>();
     }
 
     void Update()
     {
-        if (isFliped) spriteRenderer.flipX = true;
+        if (isFliped)
+        {
+            Vector3 scale = transform.localScale;
+            scale.x = -Mathf.Abs(scale.x);
+            transform.localScale = scale;
+        }
     }
 
     void OnTriggerExit2D(Collider2D collision)
     {
-        
+        animator.SetTrigger(anim_param_start);
+        Debug.Log("Start Line Crossed!");
     }
 }
