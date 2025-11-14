@@ -125,7 +125,7 @@ GameObject:
   - component: {fileID: 7879866810290026841}
   - component: {fileID: 5735667624190808466}
   m_Layer: 0
-  m_Name: FinishLine
+  m_Name: FinishPoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

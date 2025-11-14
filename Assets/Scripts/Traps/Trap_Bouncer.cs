@@ -26,7 +26,7 @@ public class Trap_Bouncer : MonoBehaviour
         if (collision.CompareTag("Player"))
         {
             ActivateBouncer();
-            collision.GetComponent<PlayerMovementController>().Push(pushDirection * bounceForce, pushDuration);
+            collision.GetComponent<PlayerMovementController>().Push(transform.up * bounceForce, pushDuration);
             StartCoroutine(DeactivateBouncerAfterDelayCo(deactivateDelay));
         }
     }

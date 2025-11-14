@@ -265,7 +265,7 @@ public class PlayerMovementController : MonoBehaviour
     {
         inputActions.Disable();
 
-        // rb.linearVelocity = Vector2.zero;
+        rb.linearVelocity = Vector2.zero;
         rb.AddForce(direction, ForceMode2D.Impulse);
 
         yield return new WaitForSeconds(duration);

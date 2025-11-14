@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using UnityEngine;
 
 public class PlayerStats : MonoBehaviour
@@ -57,11 +58,25 @@ public class PlayerStats : MonoBehaviour
         currentStamina = Mathf.Max(currentStamina, 0);
     }
 
-    private void RegenerateStamina()
+    public void RegenerateStamina()
     {
         if (currentStamina >= maxStamina) return;
 
         currentStamina += staminaRegenRate * Time.deltaTime;
         currentStamina = Mathf.Min(currentStamina, maxStamina);
+    }
+
+    public void RegenerateStamina(float amount)
+    {
+        if (currentStamina >= maxStamina) return;
+
+        currentStamina += amount;
+        currentStamina = Mathf.Min(currentStamina, maxStamina);
+    }
+
+    public void RegenerateHealth(int amount)
+    {
+        currentHealth += amount;
+        currentHealth = Mathf.Min(currentHealth, maxHealth);
     }
 }

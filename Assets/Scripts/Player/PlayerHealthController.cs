@@ -4,12 +4,12 @@ using UnityEngine.Events;
 
 public class PlayerHealthController : MonoBehaviour
 {
-    public static readonly int anim_param_hurt = Animator.StringToHash("Hurt");
     public int currentHealth { get => PlayerStats.instance.CurrentHealth; set => PlayerStats.instance.CurrentHealth = value; }
 
     [Header("Health Settings")]
     [SerializeField, Tooltip("Event triggered when the player dies")] private GameObject deathEffect;
 
+    private static readonly int anim_param_hurt = Animator.StringToHash("Hurt");
     private int maxHealth;
     private Animator animator;
     private Character_AVFXs aVeffects;
