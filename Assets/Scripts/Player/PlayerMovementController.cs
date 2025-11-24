@@ -331,5 +331,10 @@ public class PlayerMovementController : MonoBehaviour
         Gizmos.DrawLine(wallPrimaryCheck.position, wallPrimaryCheck.position + Vector3.right * wallCheckDistance);
         Gizmos.DrawLine(wallSecondaryCheck.position, wallSecondaryCheck.position + Vector3.right * wallCheckDistance);
     }
+
+    internal void Push(Vector2 impulse, object pushDuration)
+    {
+        throw new NotImplementedException();
+    }
     #endregion
 }
